@@ -77,6 +77,7 @@ class DebateManager:
                     "total_rounds": rounds,
                 })
 
+                # Send all thinking events first
                 for model_id in models:
                     self._add_event(session_id, {
                         "type": "thinking",
@@ -85,14 +86,18 @@ class DebateManager:
                         "round": round_num,
                     })
 
+                # Call all models in parallel within the round
+                calls = []
+                for model_id in models:
                     role = f"第{models.index(model_id)+1}位发言者"
                     system = _build_system_prompt(role, topic, round_num=round_num)
                     messages = _build_messages(topic, history, round_num)
+                    calls.append((model_id, messages, system))
 
-                    try:
-                        response = call_model(model_id, messages, system)
-                    except Exception as e:
-                        response = f"[调用失败: {e}]"
+                results = call_models_parallel(calls)
+
+                for i, model_id in enumerate(models):
+                    response = results[i]
 
                     entry = {
                         "model": model_id,
@@ -106,7 +111,6 @@ class DebateManager:
                     self.sessions[session_id]["history"] = history
 
                     self._add_event(session_id, {"type": "speech", **entry})
-                    time.sleep(0.3)
 
             self._add_event(session_id, {
                 "type": "debate_done",
