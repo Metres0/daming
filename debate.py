@@ -319,7 +319,10 @@ class DebateManager:
                 side = entry.get("side", "")
                 if side:
                     speech_text += f" ({side})"
-                speech_text += f"]: {entry['content']}"
+                content = entry['content']
+                if len(content) > 300:
+                    content = content[:300] + "…"
+                speech_text += f"]: {content}"
 
                 system = MUTUAL_SCORING_PROMPT.format(identity=identity)
                 prompt = f"辩论话题：{topic}\n\n请对以下发言进行评分：\n\n{speech_text}"
@@ -470,26 +473,34 @@ def _build_messages(
             )
         return [{"role": "user", "content": prompt}]
 
-    messages = []
+    # Compress history: combine all previous speeches into a single user message
+    # to keep context short and avoid the model seeing fake "assistant" turns
+    history_lines = []
     for entry in history:
         label = entry.get("model_name", entry.get("model"))
         side_tag = f"（{entry['side']}）" if entry.get("side") else ""
-        content = f"[{label}{side_tag}]: {entry['content']}"
-        messages.append({"role": "assistant", "content": content})
+        # Truncate each speech to 150 chars to keep context manageable
+        content = entry['content']
+        if len(content) > 150:
+            content = content[:150] + "…"
+        history_lines.append(f"{label}{side_tag}：{content}")
 
-    side_str = f"（{side}方）" if side else ""
+    history_text = "\n".join(history_lines)
+
+    side_str = f"（{side}）" if side else ""
     if round_num == 1:
         prompt = (
+            f"以下是之前的讨论记录：\n{history_text}\n\n"
             f"请针对以上讨论内容{side_str}，发表你的首轮申论，"
             f"明确界定你的核心立场和主要论点框架。"
         )
     else:
         prompt = (
+            f"以下是之前的讨论记录：\n{history_text}\n\n"
             f"请针对以上讨论内容{side_str}，发表你在第{round_num}轮的观点。"
             f"坚持己方立场，回应对方论点。"
         )
-    messages.append({"role": "user", "content": prompt})
-    return messages
+    return [{"role": "user", "content": prompt}]
 
 
 def _format_history(history: list) -> str:
@@ -498,5 +509,9 @@ def _format_history(history: list) -> str:
         label = e.get("model_name", e.get("model"))
         side = e.get("side", "")
         side_str = f" ({side})" if side else ""
-        parts.append(f"[{label}{side_str}]: {e['content']}")
+        content = e['content']
+        # Truncate for summary context too
+        if len(content) > 300:
+            content = content[:300] + "…"
+        parts.append(f"[{label}{side_str}]: {content}")
     return "\n\n".join(parts)
