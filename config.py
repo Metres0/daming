@@ -107,7 +107,7 @@ DEFAULT_DEBATE_MODELS = [
 DEFAULT_GROUP_A = ["glm-5.1", "kimi-k2.6", "deepseek-v4-flash"]
 DEFAULT_GROUP_B = ["qwen3.7-plus", "minimax-m3", "qwen3.6-plus"]
 
-MAX_TOKENS = 4096
+MAX_TOKENS = 512
 TEMPERATURE = 0.8
 
 SCORING_SYSTEM_PROMPT = """你是一位专业的辩论评委。请对以下辩论发言进行评分。
