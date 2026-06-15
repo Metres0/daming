@@ -86,7 +86,7 @@ class DebateManager:
                     })
 
                     role = f"第{models.index(model_id)+1}位发言者"
-                    system = _build_system_prompt(role, topic)
+                    system = _build_system_prompt(role, topic, round_num=round_num)
                     messages = _build_messages(topic, history, round_num)
 
                     try:
@@ -146,10 +146,10 @@ class DebateManager:
                         "model": model_id,
                         "model_name": ALL_MODELS[model_id]["name"],
                         "round": round_num,
-                        "side": "pro",
+                        "side": "正方",
                     })
 
-                system_a = _build_system_prompt("正方辩手", topic, "支持")
+                system_a = _build_system_prompt("正方辩手", topic, "正方", round_num)
                 messages_a = _build_messages(topic, history, round_num, "正方")
                 calls_a = [(mid, messages_a, system_a) for mid in group_a]
                 results_a = call_models_parallel(calls_a)
@@ -174,9 +174,9 @@ class DebateManager:
                         "model": model_id,
                         "model_name": ALL_MODELS[model_id]["name"],
                         "round": round_num,
-                        "side": "con",
+                        "side": "反方",
                     })
-                    system_b = _build_system_prompt("反方辩手", topic, "反对")
+                    system_b = _build_system_prompt("反方辩手", topic, "反方", round_num)
                 messages_b = _build_messages(topic, history, round_num, "反方")
                 calls_b = [(mid, messages_b, system_b) for mid in group_b]
                 results_b = call_models_parallel(calls_b)
@@ -407,15 +407,42 @@ class DebateManager:
         return "\n".join(lines)
 
 
-def _build_system_prompt(role: str, topic: str, side: str = "") -> str:
-    base = f"你是一位辩论参与者。\n辩论话题：{topic}\n你的角色：{role}\n"
-    if side:
-        base += f"你的立场：{side}\n"
+def _build_system_prompt(role: str, topic: str, side: str = "", round_num: int = 1) -> str:
+    base = f"你是一位专业辩手。\n辩论话题：「{topic}」\n你的角色：{role}\n"
+
+    if side == "正方":
+        base += (
+            "你的立场：正方——支持该辩题/推动现状改变。\n"
+            "正方义务：清晰论证辩题成立的理由，提出正面论据，回应反方质疑。\n"
+        )
+    elif side == "反方":
+        base += (
+            "你的立场：反方——反对该辩题/维护现状。\n"
+            "反方义务：反驳正方论点，提出反面论据，论证辩题不成立。\n"
+        )
+
     base += (
-        "请用中文回答。每次发言请简洁有力，控制在200字以内。\n"
-        "你需要回应对方的观点，提出自己的论据，并进行逻辑推理。\n"
-        "不要重复之前已经说过的内容，每次发言都要有新的观点或角度。\n"
-        "直接输出你的辩论发言，不要输出思考过程、分析步骤或任何元评论。\n"
+        "\n【辩论规则】\n"
+        "1. 立场不可变更：一旦在首轮申论中确立了核心立场，后续发言必须坚持该立场，不能中途倒戈或骑墙。\n"
+        "2. 片面性是正常的：辩题将复杂问题极端切割，你只需捍卫己方立场的合理性，不需要追求全面均衡。\n"
+        "3. 价值碰撞：好的辩题没有绝对对错，双方代表不同价值维度的碰撞（如效率vs公平、情感vs理智）。\n"
+    )
+
+    if round_num == 1:
+        base += (
+            "\n【本轮要求：一辩申论】\n"
+            "这是第一轮，你必须在发言开头明确声明你的核心立场和主要论点框架。\n"
+            "格式示例：「我方立场：XXX。核心论点有三：第一……第二……第三……」\n"
+        )
+    else:
+        base += (
+            "\n【本轮要求】\n"
+            "坚持己方立场，回应对方论点，提出新的支撑论据或反驳。\n"
+        )
+
+    base += (
+        "\n请用中文回答。控制在200字以内。\n"
+        "直接输出辩论发言，不要输出思考过程、分析步骤或任何元评论。\n"
     )
     return base
 
@@ -424,27 +451,44 @@ def _build_messages(
     topic: str, history: list, round_num: int, side: str = ""
 ) -> list[dict]:
     if not history:
-        return [
-            {
-                "role": "user",
-                "content": f"辩论话题：{topic}\n你的立场是{side}。请开始你的发言。",
-            }
-        ]
+        if side == "正方":
+            prompt = (
+                f"辩论话题：{topic}\n\n"
+                f"你是正方（支持辩题/推动改变），请在首轮申论中清晰界定你的核心立场，"
+                f"并陈述你的主要论点框架。"
+            )
+        elif side == "反方":
+            prompt = (
+                f"辩论话题：{topic}\n\n"
+                f"你是反方（反对辩题/维护现状），请在首轮申论中清晰界定你的核心立场，"
+                f"并陈述你的主要论点框架。"
+            )
+        else:
+            prompt = (
+                f"辩论话题：{topic}\n\n"
+                f"请开始你的第一轮发言，清晰陈述你的立场和主要论点。"
+            )
+        return [{"role": "user", "content": prompt}]
 
     messages = []
     for entry in history:
         label = entry.get("model_name", entry.get("model"))
-        side_tag = f" ({entry['side']})" if entry.get("side") else ""
+        side_tag = f"（{entry['side']}）" if entry.get("side") else ""
         content = f"[{label}{side_tag}]: {entry['content']}"
         messages.append({"role": "assistant", "content": content})
 
-    side_str = f"（{side}）" if side else ""
-    messages.append(
-        {
-            "role": "user",
-            "content": f"请针对以上讨论内容{side_str}，发表你在第{round_num}轮的观点。",
-        }
-    )
+    side_str = f"（{side}方）" if side else ""
+    if round_num == 1:
+        prompt = (
+            f"请针对以上讨论内容{side_str}，发表你的首轮申论，"
+            f"明确界定你的核心立场和主要论点框架。"
+        )
+    else:
+        prompt = (
+            f"请针对以上讨论内容{side_str}，发表你在第{round_num}轮的观点。"
+            f"坚持己方立场，回应对方论点。"
+        )
+    messages.append({"role": "user", "content": prompt})
     return messages
 
 
