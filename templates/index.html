@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 辩论场</title>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1a1a25;
+  --surface3: #222233;
+  --border: #2a2a3a;
+  --text: #e8e8f0;
+  --text-dim: #8888a0;
+  --pro: #00d68f;
+  --pro-bg: rgba(0,214,143,0.08);
+  --con: #ff6b6b;
+  --con-bg: rgba(255,107,107,0.08);
+  --accent: #6c5ce7;
+  --accent-hover: #7c6cf7;
+  --gold: #ffd93d;
+  --score-blue: #74b9ff;
+  --score-green: #55efc4;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+.header {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+  background: linear-gradient(135deg, rgba(108,92,231,0.15), rgba(0,214,143,0.1));
+  border-bottom: 1px solid var(--border);
+}
+.header h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+.header p { color: var(--text-dim); font-size: 0.9rem; }
+.container { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+/* Setup Panel */
+.setup-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.setup-panel h2 { font-size: 1.1rem; margin-bottom: 1rem; color: var(--gold); }
+.form-group { margin-bottom: 1rem; }
+.form-group label { display:block; font-size:0.85rem; color:var(--text-dim); margin-bottom:0.4rem; }
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select {
+  width: 100%; padding: 0.6rem 0.8rem; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+  font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+
+.mode-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.mode-tab {
+  flex: 1; padding: 0.7rem; background: var(--surface2); border: 2px solid var(--border);
+  border-radius: 10px; color: var(--text-dim); cursor: pointer; text-align: center;
+  font-size: 0.9rem; transition: all 0.2s;
+}
+.mode-tab.active { border-color: var(--accent); color: var(--text); background: rgba(108,92,231,0.12); }
+.mode-tab:hover { border-color: var(--accent); }
+
+.model-select { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.model-chip {
+  padding: 0.35rem 0.7rem; border-radius: 20px; border: 1px solid var(--border);
+  font-size: 0.8rem; cursor: pointer; transition: all 0.2s; user-select: none;
+}
+.model-chip.selected { border-color: var(--accent); background: rgba(108,92,231,0.2); color: #fff; }
+.model-chip:hover { border-color: var(--accent); }
+
+.team-section { margin-bottom: 0.8rem; }
+.team-label { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; }
+.team-label.pro { color: var(--pro); }
+
+.settings-toggle {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+.settings-toggle:hover { border-color: var(--accent); color: var(--text); }
+.settings-panel {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: none;
+}
+.settings-panel.open { display: block; }
+.settings-panel input[type="text"], .settings-panel input[type="password"] {
+  width: 100%; padding: 0.5rem 0.7rem; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+  font-size: 0.85rem; outline: none; margin-top: 0.3rem;
+}
+.settings-panel input:focus { border-color: var(--accent); }
+.settings-panel label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 0.1rem; }
+.settings-panel .form-row { margin-bottom: 0.7rem; }
+.team-label.con { color: var(--con); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.65rem 1.5rem; border: none; border-radius: 8px;
+  font-size: 0.95rem; cursor: pointer; transition: all 0.2s; font-weight: 600;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+.btn-gold { background: var(--gold); color: #1a1a25; }
+.btn-gold:hover { background: #ffe066; }
+.actions { display: flex; gap: 0.8rem; margin-top: 1rem; flex-wrap: wrap; }
+
+/* Debate Area */
+.debate-area { display: none; }
+.debate-area.active { display: block; }
+.setup-panel.hidden { display: none; }
+
+.status-bar {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 1rem 1.5rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;
+}
+.topic-display { font-size: 1.05rem; }
+.topic-display span { color: var(--gold); }
+.round-info { color: var(--text-dim); font-size: 0.85rem; }
+
+.speech-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 1rem 1.2rem; margin-bottom: 0.8rem; animation: fadeIn 0.4s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+.speech-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
+.speaker { font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem; }
+.speaker .emoji { font-size: 1.1rem; }
+.side-badge { font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 10px; font-weight: 600; }
+.side-badge.pro { background: var(--pro-bg); color: var(--pro); border: 1px solid rgba(0,214,143,0.3); }
+.side-badge.con { background: var(--con-bg); color: var(--con); border: 1px solid rgba(255,107,107,0.3); }
+.round-badge { color: var(--text-dim); font-size: 0.8rem; }
+.speech-content { line-height: 1.65; font-size: 0.93rem; white-space: pre-wrap; }
+
+.thinking-card {
+  background: var(--surface2); border: 1px dashed var(--accent); border-radius: 12px;
+  padding: 1rem 1.2rem; margin-bottom: 0.8rem; text-align: center; animation: pulse 1.5s infinite;
+}
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+.thinking-card .dots::after { content: ''; animation: dots 1.5s infinite; }
+@keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+
+/* Post-Debate Sections */
+.section-card {
+  margin-top: 1.5rem; background: var(--surface); border-radius: 12px;
+  padding: 1.5rem; display: none;
+}
+.section-card.visible { display: block; }
+.section-card h2 { margin-bottom: 1rem; font-size: 1.1rem; }
+
+.model-selector { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.8rem 0; }
+.model-radio {
+  padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text-dim); cursor: pointer;
+  font-size: 0.85rem; transition: all 0.2s;
+}
+.model-radio:hover, .model-radio.selected { border-color: var(--gold); color: var(--gold); background: rgba(255,217,61,0.1); }
+
+.content-box {
+  background: var(--surface2); border-radius: 8px; padding: 1rem;
+  line-height: 1.7; margin-top: 1rem; white-space: pre-wrap; display: none;
+}
+.content-box.visible { display: block; }
+
+/* Score Table */
+.score-table-wrap { overflow-x: auto; margin-top: 1rem; }
+.score-table {
+  width: 100%; border-collapse: collapse; font-size: 0.85rem;
+}
+.score-table th {
+  background: var(--surface3); padding: 0.6rem 0.8rem; text-align: left;
+  border-bottom: 2px solid var(--border); color: var(--text-dim); font-weight: 600;
+}
+.score-table td {
+  padding: 0.5rem 0.8rem; border-bottom: 1px solid var(--border);
+}
+.score-table tr:hover { background: var(--surface2); }
+.score-val { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 4px; font-weight: 600; }
+.score-high { background: rgba(0,214,143,0.15); color: var(--pro); }
+.score-mid { background: rgba(255,217,61,0.15); color: var(--gold); }
+.score-low { background: rgba(255,107,107,0.15); color: var(--con); }
+
+.export-btns { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+
+.loading-text { color: var(--text-dim); font-style: italic; animation: pulse 1.5s infinite; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+@media (max-width: 600px) {
+  .container { padding: 1rem 0.5rem; }
+  .header h1 { font-size: 1.3rem; }
+  .speech-card { padding: 0.8rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>&#x2694;&#xFE0F; AI 辩论场</h1>
+  <p>多模型智能辩论系统 &middot; Powered by OpenCode Go</p>
+</div>
+
+<div class="container">
+  <!-- Setup Panel -->
+  <div class="setup-panel" id="setupPanel">
+    <div class="settings-toggle" onclick="toggleSettings()">&#x2699;&#xFE0F; API 设置（使用自定义密钥加速）</div>
+    <div class="settings-panel" id="settingsPanel">
+      <div class="form-row">
+        <label>自定义 API Key（留空使用默认）</label>
+        <input type="password" id="customApiKey" placeholder="sk-..." />
+      </div>
+      <div class="form-row">
+        <label>自定义 Base URL（留空使用默认）</label>
+        <input type="text" id="customBaseUrl" placeholder="https://opencode.ai/zen/go/v1（留空用默认）" />
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+        <button class="btn btn-primary btn-sm" onclick="saveSettings()">&#x1f4be; 保存</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetSettings()">&#x1f504; 重置</button>
+        <span id="settingsStatus" style="color:var(--pro);font-size:0.85rem;line-height:2;"></span>
+      </div>
+    </div>
+
+    <div class="mode-tabs">
+      <div class="mode-tab active" data-mode="roundtable" onclick="setMode('roundtable')">&#x1f399;&#xFE0F; 圆桌讨论</div>
+      <div class="mode-tab" data-mode="group" onclick="setMode('group')">&#x2694;&#xFE0F; 分组对抗</div>
+    </div>
+
+    <div class="form-group">
+      <label>辩论话题</label>
+      <input type="text" id="topicInput" placeholder="输入你想辩论的话题..." />
+    </div>
+
+    <div class="form-group">
+      <label>辩论轮次</label>
+      <input type="number" id="roundsInput" value="3" min="1" max="10" />
+    </div>
+
+    <div id="roundtableSetup">
+      <div class="form-group">
+        <label>选择参与模型 (点击选中/取消)</label>
+        <div class="model-select" id="roundtableModels"></div>
+      </div>
+    </div>
+
+    <div id="groupSetup" style="display:none">
+      <div class="team-section">
+        <div class="team-label pro">&#x1f7e2; 正方 (支持)</div>
+        <div class="model-select" id="groupAModels"></div>
+      </div>
+      <div class="team-section">
+        <div class="team-label con">&#x1f534; 反方 (反对)</div>
+        <div class="model-select" id="groupBModels"></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="startBtn" onclick="startDebate()">&#x1f680; 开始辩论</button>
+      <button class="btn btn-secondary" onclick="resetAll()">&#x1f504; 重置</button>
+    </div>
+  </div>
+
+  <!-- Debate Area -->
+  <div class="debate-area" id="debateArea">
+    <div class="status-bar">
+      <div class="topic-display" id="topicDisplay"></div>
+      <div class="round-info" id="roundInfo"></div>
+    </div>
+
+    <div id="speechContainer"></div>
+    <div id="thinkingIndicator" style="display:none"></div>
+
+    <!-- Summary Section -->
+    <div class="section-card" id="summarySection" style="border: 2px solid var(--gold);">
+      <h2 style="color:var(--gold);">&#x1f4cb; 辩论总结</h2>
+      <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:0.5rem;">选择一个模型来生成总结：</p>
+      <div class="model-selector" id="summaryModels"></div>
+      <button class="btn btn-primary btn-sm" id="summaryBtn" onclick="generateSummary()">&#x2728; 生成总结</button>
+      <div class="content-box" id="summaryContent"></div>
+    </div>
+
+    <!-- Scoring Section -->
+    <div class="section-card" id="scoringSection" style="border: 2px solid var(--score-blue);">
+      <h2 style="color:var(--score-blue);">&#x1f4ca; 辩论评分</h2>
+      <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:0.8rem;">
+        可选：对各位辩手的发言进行评分。选择一个评审模型，或让各模型互相评分。
+      </p>
+
+      <div style="display:flex;gap:0.8rem;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" id="singleScoreBtn" onclick="scoreSingle()">&#x1f9d1;&#x200d;&#x2696;&#xFE0F; 单模型评分</button>
+        <button class="btn btn-gold btn-sm" id="mutualScoreBtn" onclick="scoreMutual()">&#x1f91d; 模型互评</button>
+      </div>
+
+      <div id="singleScoreSelector" style="display:none;margin-top:1rem;">
+        <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:0.5rem;">选择评审模型：</p>
+        <div class="model-selector" id="scoreModelSelect"></div>
+        <button class="btn btn-primary btn-sm" onclick="runSingleScore()" id="runScoreBtn">&#x1f4ca; 开始评分</button>
+      </div>
+
+      <div id="mutualScoreStatus" style="display:none;margin-top:1rem;">
+        <p class="loading-text" id="mutualScoreText">模型互评进行中，请稍候...</p>
+      </div>
+
+      <div id="scoreResults" style="display:none;margin-top:1rem;"></div>
+    </div>
+
+    <!-- Export -->
+    <div style="margin-top:1rem;">
+      <div class="export-btns">
+        <button class="btn btn-secondary btn-sm" onclick="exportMarkdown()">&#x1f4c4; 导出 Markdown</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportText()">&#x1f4c4; 导出 TXT</button>
+        <button class="btn btn-secondary btn-sm" onclick="newDebate()">&#x1f504; 新辩论</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let MODELS = [];
+let currentMode = 'roundtable';
+let selectedRoundtable = [];
+let selectedGroupA = [];
+let selectedGroupB = [];
+let sessionId = null;
+let debateHistory = [];
+let debateMode = '';
+let debateTopic = '';
+
+const DEFAULT_ROUNDTABLE = ['glm-5.1','kimi-k2.6','deepseek-v4-flash','qwen3.7-plus','minimax-m3'];
+const DEFAULT_GROUP_A = ['glm-5.1','kimi-k2.6','deepseek-v4-flash'];
+const DEFAULT_GROUP_B = ['qwen3.7-plus','minimax-m3','qwen3.6-plus'];
+
+async function loadModels() {
+  const resp = await fetch('/api/models');
+  MODELS = await resp.json();
+  renderModelChips();
+}
+
+function renderModelChips() {
+  renderChips('roundtableModels', selectedRoundtable);
+  renderChips('groupAModels', selectedGroupA);
+  renderChips('groupBModels', selectedGroupB);
+}
+
+function renderChips(containerId, selected) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  MODELS.forEach(m => {
+    const chip = document.createElement('div');
+    chip.className = 'model-chip' + (selected.includes(m.id) ? ' selected' : '');
+    chip.style.borderColor = selected.includes(m.id) ? m.color : '';
+    chip.style.color = selected.includes(m.id) ? m.color : '';
+    chip.innerHTML = `${m.emoji} ${m.name}`;
+    chip.onclick = () => {
+      const idx = selected.indexOf(m.id);
+      if (idx >= 0) selected.splice(idx, 1);
+      else selected.push(m.id);
+      renderChips(containerId, selected);
+    };
+    container.appendChild(chip);
+  });
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.mode === mode);
+  });
+  document.getElementById('roundtableSetup').style.display = mode === 'roundtable' ? '' : 'none';
+  document.getElementById('groupSetup').style.display = mode === 'group' ? '' : 'none';
+}
+
+async function startDebate() {
+  const topic = document.getElementById('topicInput').value.trim();
+  if (!topic) { alert('请输入辩论话题'); return; }
+  const rounds = parseInt(document.getElementById('roundsInput').value) || 3;
+  debateTopic = topic;
+
+  const body = { mode: currentMode, topic, rounds };
+  if (currentMode === 'roundtable') {
+    body.models = selectedRoundtable.length ? selectedRoundtable : DEFAULT_ROUNDTABLE;
+  } else {
+    body.group_a = selectedGroupA.length ? selectedGroupA : DEFAULT_GROUP_A;
+    body.group_b = selectedGroupB.length ? selectedGroupB : DEFAULT_GROUP_B;
+  }
+
+  document.getElementById('startBtn').disabled = true;
+  debateHistory = [];
+
+  const resp = await fetch('/api/debate/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json();
+  sessionId = data.session_id;
+  debateMode = currentMode;
+
+  document.getElementById('setupPanel').classList.add('hidden');
+  document.getElementById('debateArea').classList.add('active');
+  document.getElementById('topicDisplay').innerHTML = `话题: <span>${escapeHtml(topic)}</span>`;
+
+  listenToStream(sessionId);
+}
+
+function listenToStream(sid) {
+  const es = new EventSource(`/api/debate/stream/${sid}`);
+  es.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    handleEvent(data);
+    if (data.type === 'done') {
+      es.close();
+      onDebateDone();
+    }
+  };
+  es.onerror = () => {
+    es.close();
+    onDebateDone();
+  };
+}
+
+function handleEvent(data) {
+  switch (data.type) {
+    case 'start': break;
+    case 'round_start':
+      document.getElementById('roundInfo').textContent = `第 ${data.round} / ${data.total_rounds} 轮`;
+      break;
+    case 'thinking':
+      showThinking(data);
+      break;
+    case 'speech':
+      removeThinking();
+      addSpeechCard(data);
+      debateHistory.push(data);
+      break;
+    case 'debate_done':
+      removeThinking();
+      break;
+    case 'mutual_score':
+      addMutualScoreEvent(data);
+      break;
+    case 'error':
+      removeThinking();
+      addErrorCard(data);
+      break;
+  }
+}
+
+function showThinking(data) {
+  removeThinking();
+  const model = MODELS.find(m => m.id === data.model) || { name: data.model, emoji: '', color: '#888' };
+  const sideTag = data.side === 'pro' ? ' <span class="side-badge pro">正方</span>'
+    : data.side === 'con' ? ' <span class="side-badge con">反方</span>' : '';
+  const container = document.getElementById('thinkingIndicator');
+  container.style.display = 'block';
+  container.innerHTML = `<div class="thinking-card">
+    <span class="emoji">${model.emoji}</span> ${model.name}${sideTag} 思考中<span class="dots"></span>
+  </div>`;
+  container.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function removeThinking() {
+  const el = document.getElementById('thinkingIndicator');
+  el.style.display = 'none';
+  el.innerHTML = '';
+}
+
+function addSpeechCard(data) {
+  const model = MODELS.find(m => m.id === data.model) || { name: data.model_name || data.model, emoji: '\u{1f916}', color: '#888' };
+  const container = document.getElementById('speechContainer');
+  const sideTag = data.side === '正方' ? '<span class="side-badge pro">正方</span>'
+    : data.side === '反方' ? '<span class="side-badge con">反方</span>' : '';
+  const card = document.createElement('div');
+  card.className = 'speech-card';
+  card.style.borderLeftWidth = '3px';
+  card.style.borderLeftColor = model.color;
+  card.innerHTML = `
+    <div class="speech-header">
+      <div class="speaker">
+        <span class="emoji">${model.emoji}</span> ${model.name} ${sideTag}
+      </div>
+      <div class="round-badge">第${data.round || '?'}轮</div>
+    </div>
+    <div class="speech-content">${escapeHtml(data.content)}</div>
+  `;
+  container.appendChild(card);
+  card.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function addErrorCard(data) {
+  const container = document.getElementById('speechContainer');
+  const card = document.createElement('div');
+  card.className = 'speech-card';
+  card.style.borderColor = '#e74c3c';
+  card.innerHTML = `<div class="speech-content" style="color:#e74c3c">错误: ${escapeHtml(data.message)}</div>`;
+  container.appendChild(card);
+}
+
+function addMutualScoreEvent(data) {
+  const statusEl = document.getElementById('mutualScoreText');
+  if (statusEl) {
+    statusEl.textContent = `${data.scorer_model_name} 正在评价 ${data.speaker_model_name}...`;
+  }
+}
+
+function onDebateDone() {
+  showSummarySection();
+  document.getElementById('scoringSection').classList.add('visible');
+  populateModelSelectors();
+}
+
+// --- Summary ---
+function showSummarySection() {
+  document.getElementById('summarySection').classList.add('visible');
+  populateModelSelectors();
+}
+
+function populateModelSelectors() {
+  const modelsUsed = [...new Set(debateHistory.map(h => h.model))];
+  // Summary models
+  const summaryContainer = document.getElementById('summaryModels');
+  summaryContainer.innerHTML = '';
+  MODELS.forEach(m => {
+    const btn = document.createElement('div');
+    btn.className = 'model-radio';
+    btn.textContent = `${m.emoji} ${m.name}`;
+    btn.dataset.modelId = m.id;
+    btn.dataset.container = 'summary';
+    btn.onclick = () => selectRadio(btn, 'summaryModels');
+    summaryContainer.appendChild(btn);
+  });
+  // Default to first model in debate
+  const defaultSummary = modelsUsed[0] || MODELS[0].id;
+  const defaultBtn = summaryContainer.querySelector(`[data-model-id="${defaultSummary}"]`);
+  if (defaultBtn) defaultBtn.classList.add('selected');
+
+  // Score models
+  const scoreContainer = document.getElementById('scoreModelSelect');
+  scoreContainer.innerHTML = '';
+  MODELS.forEach(m => {
+    const btn = document.createElement('div');
+    btn.className = 'model-radio';
+    btn.textContent = `${m.emoji} ${m.name}`;
+    btn.dataset.modelId = m.id;
+    btn.onclick = () => selectRadio(btn, 'scoreModelSelect');
+    scoreContainer.appendChild(btn);
+  });
+  const defaultScore = modelsUsed[0] || MODELS[0].id;
+  const defaultScoreBtn = scoreContainer.querySelector(`[data-model-id="${defaultScore}"]`);
+  if (defaultScoreBtn) defaultScoreBtn.classList.add('selected');
+}
+
+function selectRadio(btn, containerId) {
+  document.querySelectorAll(`#${containerId} .model-radio`).forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+async function generateSummary() {
+  const selectedBtn = document.querySelector('#summaryModels .model-radio.selected');
+  if (!selectedBtn) { alert('请选择总结模型'); return; }
+  const modelId = selectedBtn.dataset.modelId;
+  const summaryType = debateMode === 'group' ? 'judge' : 'summary';
+
+  document.getElementById('summaryBtn').disabled = true;
+  document.getElementById('summaryBtn').textContent = '生成中...';
+
+  const resp = await fetch('/api/debate/summary', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, model_id: modelId, summary_type: summaryType }),
+  });
+  const data = await resp.json();
+
+  const contentEl = document.getElementById('summaryContent');
+  contentEl.classList.add('visible');
+  contentEl.textContent = data.content || data.error || '生成失败';
+
+  document.getElementById('summaryBtn').disabled = false;
+  document.getElementById('summaryBtn').innerHTML = '&#x2728; 重新生成总结';
+}
+
+// --- Scoring ---
+function scoreSingle() {
+  document.getElementById('singleScoreSelector').style.display = 'block';
+  document.getElementById('mutualScoreStatus').style.display = 'none';
+}
+
+function scoreMutual() {
+  document.getElementById('singleScoreSelector').style.display = 'none';
+  document.getElementById('mutualScoreStatus').style.display = 'block';
+  document.getElementById('singleScoreBtn').disabled = true;
+  document.getElementById('mutualScoreBtn').disabled = true;
+
+  const resp = fetch('/api/debate/mutual-score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId }),
+  }).then(r => r.json());
+
+  // Listen for mutual score events via SSE
+  listenForMutualScores();
+}
+
+function listenForMutualScores() {
+  const es = new EventSource(`/api/debate/stream/${sessionId}`);
+  let scoreResults = [];
+  es.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'mutual_score') {
+      scoreResults.push(data);
+    }
+    if (data.type === 'done') {
+      es.close();
+      renderMutualScores(scoreResults);
+      document.getElementById('singleScoreBtn').disabled = false;
+      document.getElementById('mutualScoreBtn').disabled = false;
+    }
+  };
+  es.onerror = () => {
+    es.close();
+    renderMutualScores(scoreResults);
+  };
+}
+
+async function runSingleScore() {
+  const selectedBtn = document.querySelector('#scoreModelSelect .model-radio.selected');
+  if (!selectedBtn) { alert('请选择评审模型'); return; }
+  const modelId = selectedBtn.dataset.modelId;
+
+  document.getElementById('runScoreBtn').disabled = true;
+  document.getElementById('runScoreBtn').textContent = '评分中...';
+
+  const resp = await fetch('/api/debate/score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, model_id: modelId }),
+  });
+  const data = await resp.json();
+
+  if (data.scores) {
+    renderScoreTable(data.scores, modelId);
+  } else {
+    document.getElementById('scoreResults').innerHTML = `<p style="color:var(--con);">评分失败: ${data.error || '未知错误'}</p>`;
+    document.getElementById('scoreResults').style.display = 'block';
+  }
+
+  document.getElementById('runScoreBtn').disabled = false;
+  document.getElementById('runScoreBtn').textContent = '\u{1f4ca} 重新评分';
+}
+
+function renderScoreTable(scores, scorerId) {
+  const container = document.getElementById('scoreResults');
+  let html = '<div class="score-table-wrap"><table class="score-table"><thead><tr>';
+  html += '<th>辩手</th><th>立场</th><th>论点力度</th><th>逻辑严密</th><th>说服力</th><th>表达质量</th><th>总评</th>';
+  html += '</tr></thead><tbody>';
+
+  for (const s of scores) {
+    const sc = s.scores || {};
+    html += '<tr>';
+    html += `<td>${escapeHtml(s.model_name || s.model)}</td>`;
+    html += `<td>${s.side || '-'}</td>`;
+    html += `<td>${scoreBadge(sc['论点力度'])}</td>`;
+    html += `<td>${scoreBadge(sc['逻辑严密'])}</td>`;
+    html += `<td>${scoreBadge(sc['说服力'])}</td>`;
+    html += `<td>${scoreBadge(sc['表达质量'])}</td>`;
+    html += `<td style="font-size:0.8rem;">${escapeHtml(sc['总评'] || (sc.error ? '评分失败' : '-'))}</td>`;
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+  container.style.display = 'block';
+}
+
+function renderMutualScores(scores) {
+  if (!scores || scores.length === 0) {
+    // Try to get results from backend
+    fetch(`/api/debate/history/${sessionId}`).then(r => r.json()).then(data => {
+      const ms = data.mutual_scores || [];
+      _renderMutualTable(ms);
+    });
+    return;
+  }
+  _renderMutualTable(scores);
+}
+
+function _renderMutualTable(scores) {
+  const container = document.getElementById('scoreResults');
+  if (!scores.length) {
+    container.innerHTML = '<p class="loading-text">暂无评分数据</p>';
+    container.style.display = 'block';
+    return;
+  }
+
+  let html = '<h3 style="color:var(--gold);margin:0.5rem 0;">模型互评结果</h3>';
+  html += '<div class="score-table-wrap"><table class="score-table"><thead><tr>';
+  html += '<th>评审方</th><th>被评方</th><th>论点力度</th><th>逻辑严密</th><th>说服力</th><th>表达质量</th><th>总评</th>';
+  html += '</tr></thead><tbody>';
+
+  for (const s of scores) {
+    const sc = s.scores || {};
+    html += '<tr>';
+    html += `<td style="color:var(--score-blue);">${escapeHtml(s.scorer_model_name || s.scorer_model)}</td>`;
+    html += `<td>${escapeHtml(s.speaker_model_name || s.speaker_model)}${s.side ? ' ('+s.side+')' : ''}</td>`;
+    html += `<td>${scoreBadge(sc['论点力度'])}</td>`;
+    html += `<td>${scoreBadge(sc['逻辑严密'])}</td>`;
+    html += `<td>${scoreBadge(sc['说服力'])}</td>`;
+    html += `<td>${scoreBadge(sc['表达质量'])}</td>`;
+    html += `<td style="font-size:0.8rem;">${escapeHtml(sc['总评'] || (sc.error ? '评分失败' : '-'))}</td>`;
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+
+  // Add average summary
+  if (scores.length > 1) {
+    const speakers = {};
+    for (const s of scores) {
+      const key = s.speaker_model || s.model;
+      if (!speakers[key]) speakers[key] = { name: s.speaker_model_name || s.model, scores: [], count: 0 };
+      const dims = ['论点力度', '逻辑严密', '说服力', '表达质量'];
+      let total = 0; let cnt = 0;
+      for (const d of dims) {
+        if (typeof sc[d] === 'number') { total += sc[d]; cnt++; }
+      }
+      if (cnt > 0) {
+        speakers[key].scores.push(total / cnt);
+        speakers[key].count++;
+      }
+    }
+    html += '<div style="margin-top:1rem;padding:0.8rem;background:var(--surface3);border-radius:8px;">';
+    html += '<strong style="color:var(--gold);">综合均分排名:</strong><br>';
+    const ranked = Object.values(speakers).map(s => ({ ...s, avg: s.scores.reduce((a,b)=>a+b,0)/s.scores.length }))
+      .sort((a,b) => b.avg - a.avg);
+    ranked.forEach((r, i) => {
+      const medal = i === 0 ? '\u{1f947}' : i === 1 ? '\u{1f948}' : i === 2 ? '\u{1f949}' : '';
+      html += `<span style="margin-right:1.5rem;">${medal} ${r.name}: <strong>${r.avg.toFixed(1)}</strong></span>`;
+    });
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
+  container.style.display = 'block';
+  document.getElementById('mutualScoreText').textContent = '互评完成!';
+  document.getElementById('mutualScoreText').style.color = 'var(--pro)';
+}
+
+function scoreBadge(val) {
+  if (typeof val !== 'number') return '<span style="color:var(--text-dim);">-</span>';
+  let cls = 'score-low';
+  if (val >= 8) cls = 'score-high';
+  else if (val >= 6) cls = 'score-mid';
+  return `<span class="score-val ${cls}">${val}</span>`;
+}
+
+// --- Export ---
+function exportMarkdown() {
+  const blob = new Blob([buildExportText('# ')], { type: 'text/markdown;charset=utf-8' });
+  downloadBlob(blob, `debate_${sessionId}.md`);
+}
+
+function exportText() {
+  const blob = new Blob([buildExportText('')], { type: 'text/plain;charset=utf-8' });
+  downloadBlob(blob, `debate_${sessionId}.txt`);
+}
+
+function buildExportText(prefix) {
+  let text = `${prefix}辩论话题: ${debateTopic}\n${prefix}辩论模式: ${debateMode === 'group' ? '分组对抗' : '圆桌讨论'}\n\n`;
+  debateHistory.forEach(h => {
+    const side = h.side ? ` (${h.side})` : '';
+    text += `${prefix}--- 第${h.round || '?'}轮 | ${h.model_name || h.model}${side} ---\n${h.content}\n\n`;
+  });
+  const summaryEl = document.getElementById('summaryContent');
+  if (summaryEl && summaryEl.textContent) {
+    text += `${prefix}总结\n${summaryEl.textContent}\n`;
+  }
+  return text;
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function toggleSettings() {
+  const panel = document.getElementById('settingsPanel');
+  panel.classList.toggle('open');
+}
+
+async function saveSettings() {
+  const apiKey = document.getElementById('customApiKey').value.trim();
+  const baseUrl = document.getElementById('customBaseUrl').value.trim();
+  const resp = await fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_key: apiKey, base_url: baseUrl }),
+  });
+  const data = await resp.json();
+  const status = document.getElementById('settingsStatus');
+  if (data.status === 'ok') {
+    status.textContent = '已保存!';
+    setTimeout(() => status.textContent = '', 2000);
+  } else {
+    status.textContent = '保存失败';
+    status.style.color = 'var(--con)';
+  }
+}
+
+function resetSettings() {
+  document.getElementById('customApiKey').value = '';
+  document.getElementById('customBaseUrl').value = '';
+  saveSettings();
+}
+
+function newDebate() {
+  document.getElementById('setupPanel').classList.remove('hidden');
+  document.getElementById('debateArea').classList.remove('active');
+  document.getElementById('speechContainer').innerHTML = '';
+  document.getElementById('summarySection').classList.remove('visible');
+  document.getElementById('summaryContent').classList.remove('visible');
+  document.getElementById('summaryContent').textContent = '';
+  document.getElementById('scoringSection').classList.remove('visible');
+  document.getElementById('scoreResults').style.display = 'none';
+  document.getElementById('singleScoreSelector').style.display = 'none';
+  document.getElementById('mutualScoreStatus').style.display = 'none';
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('singleScoreBtn').disabled = false;
+  document.getElementById('mutualScoreBtn').disabled = false;
+  debateHistory = [];
+  sessionId = null;
+}
+
+function resetAll() {
+  selectedRoundtable = [...DEFAULT_ROUNDTABLE];
+  selectedGroupA = [...DEFAULT_GROUP_A];
+  selectedGroupB = [...DEFAULT_GROUP_B];
+  renderModelChips();
+  document.getElementById('topicInput').value = '';
+  document.getElementById('roundsInput').value = '3';
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Init
+selectedRoundtable = [...DEFAULT_ROUNDTABLE];
+selectedGroupA = [...DEFAULT_GROUP_A];
+selectedGroupB = [...DEFAULT_GROUP_B];
+loadModels();
+</script>
+</body>
+</html>
