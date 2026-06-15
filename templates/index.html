@@ -273,11 +273,11 @@ body {
 
     <div id="groupSetup" style="display:none">
       <div class="team-section">
-        <div class="team-label pro">&#x1f7e2; 正方 (支持)</div>
+        <div class="team-label pro">&#x1f7e2; 正方（支持辩题/推动改变）</div>
         <div class="model-select" id="groupAModels"></div>
       </div>
       <div class="team-section">
-        <div class="team-label con">&#x1f534; 反方 (反对)</div>
+        <div class="team-label con">&#x1f534; 反方（反对辩题/维护现状）</div>
         <div class="model-select" id="groupBModels"></div>
       </div>
     </div>
@@ -477,8 +477,8 @@ function handleEvent(data) {
 function showThinking(data) {
   removeThinking();
   const model = MODELS.find(m => m.id === data.model) || { name: data.model, emoji: '', color: '#888' };
-  const sideTag = data.side === 'pro' ? ' <span class="side-badge pro">正方</span>'
-    : data.side === 'con' ? ' <span class="side-badge con">反方</span>' : '';
+  const sideTag = data.side === '正方' ? ' <span class="side-badge pro">正方</span>'
+    : data.side === '反方' ? ' <span class="side-badge con">反方</span>' : '';
   const container = document.getElementById('thinkingIndicator');
   container.style.display = 'block';
   container.innerHTML = `<div class="thinking-card">
